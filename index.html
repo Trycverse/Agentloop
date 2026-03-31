@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AgentLoop Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #020617;
+    color: #e2e8f0;
+}
+
+header {
+    padding: 20px;
+    border-bottom: 1px solid #1e293b;
+    text-align: center;
+}
+
+h1 { color: #38bdf8; margin: 0; }
+
+.container { padding: 20px; }
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+}
+
+.card {
+    background: #0f172a;
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid #1e293b;
+}
+
+.big { grid-column: span 2; }
+
+.log {
+    height: 180px;
+    overflow-y: auto;
+    font-size: 12px;
+}
+
+button {
+    margin-top: 15px;
+    padding: 10px 20px;
+    background: #38bdf8;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.stat {
+    font-size: 18px;
+    margin-top: 5px;
+}
+
+footer {
+    text-align: center;
+    padding: 20px;
+    font-size: 12px;
+    color: #64748b;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>AgentLoop</h1>
+    <p>Autonomous Yield Orchestrator</p>
+</header>
+
+<div class="container">
+
+<div class="grid">
+
+<div class="card">
+    <h3>Observe</h3>
+    <div id="observe"></div>
+</div>
+
+<div class="card">
+    <h3>Decide</h3>
+    <div id="decide"></div>
+</div>
+
+<div class="card">
+    <h3>AI Confidence</h3>
+    <div class="stat" id="confidence"></div>
+</div>
+
+<div class="card">
+    <h3>Risk Score</h3>
+    <div class="stat" id="risk"></div>
+</div>
+
+<div class="card big">
+    <h3>Portfolio Value</h3>
+    <h2 id="portfolio">$75,000</h2>
+    <canvas id="chart"></canvas>
+</div>
+
+<div class="card big">
+    <h3>Allocation</h3>
+    <div id="allocation"></div>
+</div>
+
+<div class="card big">
+    <h3>Execution Feed</h3>
+    <div class="log" id="log"></div>
+</div>
+
+</div>
+
+<button onclick="toggle()">Start / Stop Agent</button>
+
+</div>
+
+<footer>
+    developed by @trycverse
+</footer>
+
+<script>
+
+let running = false;
+let portfolio = 75000;
+let current = "USDC";
+let history = [75000];
+
+const ctx = document.getElementById('chart').getContext('2d');
+
+const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: [],
+        datasets: [{
+            label: 'Portfolio',
+            data: history,
+            borderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { display: false } }
+    }
+});
+
+function rand(min, max) {
+    return Math.random() * (max - min) + min;
+}
+
+function log(msg) {
+    let el = document.getElementById("log");
+    el.innerHTML += msg + "<br>";
+    el.scrollTop = el.scrollHeight;
+}
+
+function step() {
+
+    let data = {
+        USDC: rand(4, 8),
+        mETH: rand(3, 6),
+        fBTC: rand(2, 5)
+    };
+
+    document.getElementById("observe").innerHTML =
+        `USDC: ${data.USDC.toFixed(2)}%<br>
+         mETH: ${data.mETH.toFixed(2)}%<br>
+         fBTC: ${data.fBTC.toFixed(2)}%`;
+
+    let best = Object.keys(data).reduce((a, b) => data[a] > data[b] ? a : b);
+
+    let confidence = rand(70, 98);
+    let risk = rand(2, 8);
+
+    document.getElementById("decide").innerHTML =
+        `<b>${best}</b> selected`;
+
+    document.getElementById("confidence").innerText =
+        confidence.toFixed(1) + "%";
+
+    document.getElementById("risk").innerText =
+        risk.toFixed(2);
+
+    if (best !== current) {
+        log(`Rebalance → ${current} → ${best}`);
+        current = best;
+    }
+
+    let growth = data[current] / 100 / 12;
+    portfolio += portfolio * growth;
+
+    history.push(portfolio);
+    chart.data.labels.push("");
+    chart.data.datasets[0].data = history;
+    chart.update();
+
+    document.getElementById("portfolio").innerText =
+        "$" + portfolio.toFixed(2);
+
+    document.getElementById("allocation").innerHTML =
+        `USDC: ${current === "USDC" ? "100%" : "0%"}<br>
+         mETH: ${current === "mETH" ? "100%" : "0%"}<br>
+         fBTC: ${current === "fBTC" ? "100%" : "0%"}`;
+
+    log(`Yield: ${data[current].toFixed(2)}% | Confidence: ${confidence.toFixed(1)}%`);
+}
+
+function loop() {
+    if (!running) return;
+    step();
+    setTimeout(loop, 1500);
+}
+
+function toggle() {
+    running = !running;
+
+    if (running) {
+        log("Agent started...");
+        loop();
+    } else {
+        log("Agent stopped.");
+    }
+}
+
+</script>
+
+</body>
+</html>
